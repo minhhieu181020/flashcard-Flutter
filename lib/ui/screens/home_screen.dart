@@ -35,7 +35,10 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text(
           "ielts cambridge",
           style: TextStyle(
-              fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -45,7 +48,13 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => CreateFlashcardScreen()),
+                MaterialPageRoute(
+                  builder: (context) => CreateFlashcardScreen(
+                    category: selectedCategory == "Tất cả"
+                        ? null
+                        : selectedCategory,
+                  ),
+                ),
               );
             },
           ),
@@ -71,9 +80,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 final cat = categories[index];
                 final isSelected = cat == selectedCategory;
                 return ChoiceChip(
-                  label: Text(cat,
-                      style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black)),
+                  label: Text(
+                    cat,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black,
+                    ),
+                  ),
                   selected: isSelected,
                   selectedColor: Colors.blueGrey,
                   onSelected: (_) {
@@ -86,8 +98,10 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 10),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text("Gần đây",
-                style: TextStyle(color: Colors.white70, fontSize: 16)),
+            child: Text(
+              "Gần đây",
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+            ),
           ),
           const SizedBox(height: 8),
           // Danh sách API
@@ -99,28 +113,62 @@ class _HomeScreenState extends State<HomeScreen> {
                   return const Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
                   return Center(
-                      child: Text("Lỗi: ${snapshot.error}",
-                          style: const TextStyle(color: Colors.red)));
+                    child: Text(
+                      "Lỗi: ${snapshot.error}",
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  );
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(
-                      child: Text("Không có dữ liệu",
-                          style: TextStyle(color: Colors.white)));
+                    child: Text(
+                      "Không có dữ liệu",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  );
                 }
 
-                // lấy data
                 final data = snapshot.data!;
                 final filteredData = selectedCategory == "Tất cả"
                     ? data
                     : data
-                        .where((s) => s.category == selectedCategory)
-                        .toList();
+                          .where((s) => s.category == selectedCategory)
+                          .toList();
 
+                // ✅ Nếu không có học phần nào
+                if (filteredData.isEmpty) {
+                  return Center(
+                    child: TextButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CreateFlashcardScreen(
+                              category: selectedCategory == "Tất cả"
+                                  ? null
+                                  : selectedCategory,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      label: const Text(
+                        "Thêm học phần",
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                    ),
+                  );
+                }
+
+                // ✅ Có dữ liệu thì hiển thị danh sách
                 return ListView.builder(
                   itemCount: filteredData.length,
                   itemBuilder: (context, index) {
                     final study = filteredData[index];
                     return ListTile(
-                      leading: const Icon(Icons.folder, color: Colors.lightBlueAccent),
+                      leading: const Icon(
+                        Icons.folder,
+                        color: Colors.lightBlueAccent,
+                      ),
                       title: Text(
                         study.title,
                         style: const TextStyle(color: Colors.white),
@@ -134,12 +182,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: const TextStyle(color: Colors.white70),
                       ),
                       onTap: () {
-                        print(study.id);  // In ra study.id khi nhấn vào
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => FlashCardScreen(
-                              studyId: study.id, // Truyền study.id
+                              studyId: study.id,
                               studyTitle: study.title,
                             ),
                           ),

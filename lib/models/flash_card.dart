@@ -2,11 +2,12 @@ class FlashCard {
   final String title;
   final String description;
   final List<Map<String, String>> terms; // Danh sách các term-meaning pairs
-
+  final String category;
   FlashCard({
     required this.title,
     required this.description,
     required this.terms,
+    required this.category,
   });
 
   // Tạo phương thức fromJson để chuyển từ JSON thành đối tượng
@@ -22,6 +23,7 @@ class FlashCard {
     return FlashCard(
       title: json['title'],
       description: json['description'],
+      category: json['category'],
       terms: termsList,  // Chuyển đổi terms thành List<Map<String, String>>
     );
   }
@@ -31,6 +33,7 @@ class FlashCard {
     return {
       'title': title,
       'description': description,
+      'category': category,
       'terms': terms.map((term) {
         return {
           'term': term['term'],

@@ -10,8 +10,6 @@ class TranslateService {
         Uri.parse("$_apiUrl?q=$text&langpair=en|vi"),
       );
 
-      print("📥 Status: ${response.statusCode}");
-      print("📥 Body: ${response.body}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -21,7 +19,6 @@ class TranslateService {
         return [];
       }
     } catch (e) {
-      print("⚠️ Translation error: $e");
       return [];
     }
   }

@@ -4,6 +4,11 @@ import '../../api/translate_service.dart';
 
 // Màn hình tạo Flashcard
 class CreateFlashcardScreen extends StatefulWidget {
+  final String? category;
+
+  // ❌ KHÔNG dùng const ở đây
+  CreateFlashcardScreen({Key? key, this.category}) : super(key: key);
+
   @override
   _CreateFlashcardScreenState createState() => _CreateFlashcardScreenState();
 }
@@ -14,7 +19,6 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-
   final ScrollController _scrollController = ScrollController();
 
   List<TextEditingController> _wordControllers = [];
@@ -50,43 +54,42 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
   }
 
   void _createFlashcard() async {
-  if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
-  try {
-    final title = _titleController.text;
-    final description = _showDescription ? _descriptionController.text : "";
+    try {
+      final title = _titleController.text;
+      final description = _showDescription ? _descriptionController.text : "";
+      final category = widget.category;
+      List<Map<String, String>> terms = [];
+      for (int i = 0; i < _wordControllers.length; i++) {
+        terms.add({
+          "term": _wordControllers[i].text,
+          "meaning": _meaningControllers[i].text,
+        });
+      }
 
-    List<Map<String, String>> terms = [];
-    for (int i = 0; i < _wordControllers.length; i++) {
-      terms.add({
-        "term": _wordControllers[i].text,
-        "meaning": _meaningControllers[i].text,
-      });
-    }
+      debugPrint("📤 Sending data: $title - $description -  $category - $terms");
 
-    debugPrint("📤 Sending data: $title - $terms");
-
-    final response = await apiService.createFlashcard(
-      title: title,
-      description: description,
-      terms: terms,
-    );
-
-    if (response == true) {
-      if (mounted) Navigator.pop(context);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Lỗi: API trả về không thành công")),
+      final response = await apiService.createFlashcard(
+        title: title,
+        description: description,
+        terms: terms,
+        category: category ?? "Tất cả",
       );
+      if (response == true) {
+        if (mounted) Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Lỗi: API trả về không thành công")),
+        );
+      }
+    } catch (e) {
+      debugPrint("❌ Lỗi khi tạo flashcard: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Lỗi: $e")));
     }
-  } catch (e) {
-    debugPrint("❌ Lỗi khi tạo flashcard: $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Lỗi: $e")),
-    );
   }
-}
-
 
   void _openSettings() {
     Navigator.push(
@@ -196,15 +199,18 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
                             style: const TextStyle(color: Colors.white),
                             decoration: InputDecoration(
                               labelText: 'ĐỊNH NGHĨA ${index + 1}',
-                              labelStyle:
-                                  const TextStyle(color: Colors.white70),
+                              labelStyle: const TextStyle(
+                                color: Colors.white70,
+                              ),
                               filled: true,
                               fillColor: Colors.transparent,
                               enabledBorder: const UnderlineInputBorder(
                                 borderSide: BorderSide(color: Colors.white38),
                               ),
                               focusedBorder: const UnderlineInputBorder(
-                                borderSide: BorderSide(color: Colors.blueAccent),
+                                borderSide: BorderSide(
+                                  color: Colors.blueAccent,
+                                ),
                               ),
                             ),
                             validator: (value) => value == null || value.isEmpty
@@ -221,8 +227,9 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
                                   });
                                 },
                                 child: Container(
-                                  margin:
-                                      const EdgeInsets.symmetric(vertical: 4),
+                                  margin: const EdgeInsets.symmetric(
+                                    vertical: 4,
+                                  ),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF3A3A70),
@@ -230,8 +237,7 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
                                   ),
                                   child: Text(
                                     s,
-                                    style:
-                                        const TextStyle(color: Colors.white),
+                                    style: const TextStyle(color: Colors.white),
                                   ),
                                 ),
                               );
@@ -350,8 +356,10 @@ class FlashcardSettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSettingSection(
-      {required String title, required List<Widget> children}) {
+  Widget _buildSettingSection({
+    required String title,
+    required List<Widget> children,
+  }) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -379,8 +387,10 @@ class FlashcardSettingsScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(left, style: const TextStyle(color: Colors.white, fontSize: 15)),
-          Text(right,
-              style: const TextStyle(color: Colors.blueAccent, fontSize: 15)),
+          Text(
+            right,
+            style: const TextStyle(color: Colors.blueAccent, fontSize: 15),
+          ),
         ],
       ),
     );
