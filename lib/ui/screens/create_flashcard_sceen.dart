@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
+import '../../api/translate_service.dart';
 
 // Màn hình tạo Flashcard
 class CreateFlashcardScreen extends StatefulWidget {
@@ -9,15 +10,18 @@ class CreateFlashcardScreen extends StatefulWidget {
 
 class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
   final _formKey = GlobalKey<FormState>();
+  final ApiService apiService = ApiService();
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
+  final ScrollController _scrollController = ScrollController();
+
   List<TextEditingController> _wordControllers = [];
   List<TextEditingController> _meaningControllers = [];
+  List<List<String>> _suggestions = [];
 
-  bool _showDescription = false; // Trạng thái ẩn/hiện mô tả
-  final ApiService apiService = ApiService();
+  bool _showDescription = false;
 
   @override
   void initState() {
@@ -29,43 +33,76 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
     setState(() {
       _wordControllers.add(TextEditingController());
       _meaningControllers.add(TextEditingController());
+      _suggestions.add([]); // 🔹 Thêm danh sách gợi ý rỗng
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 50), () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
     });
   }
 
   void _createFlashcard() async {
-    if (_formKey.currentState!.validate()) {
-      final title = _titleController.text;
-      final description = _showDescription ? _descriptionController.text : "";
+  if (!_formKey.currentState!.validate()) return;
 
-      List<Map<String, String>> terms = [];
-      for (int i = 0; i < _wordControllers.length; i++) {
-        terms.add({
-          "term": _wordControllers[i].text,
-          "meaning": _meaningControllers[i].text,
-        });
-      }
+  try {
+    final title = _titleController.text;
+    final description = _showDescription ? _descriptionController.text : "";
 
-      final response = await apiService.createFlashcard(
-        title: title,
-        description: description,
-        terms: terms,
-      );
-
-      if (response) {
-        Navigator.pop(context);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Lỗi: Không thể tạo flashcard")),
-        );
-      }
+    List<Map<String, String>> terms = [];
+    for (int i = 0; i < _wordControllers.length; i++) {
+      terms.add({
+        "term": _wordControllers[i].text,
+        "meaning": _meaningControllers[i].text,
+      });
     }
+
+    debugPrint("📤 Sending data: $title - $terms");
+
+    final response = await apiService.createFlashcard(
+      title: title,
+      description: description,
+      terms: terms,
+    );
+
+    if (response == true) {
+      if (mounted) Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Lỗi: API trả về không thành công")),
+      );
+    }
+  } catch (e) {
+    debugPrint("❌ Lỗi khi tạo flashcard: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Lỗi: $e")),
+    );
   }
+}
+
 
   void _openSettings() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => FlashcardSettingsScreen()),
     );
+  }
+
+  Future<void> _fetchSuggestions(int index) async {
+    final term = _wordControllers[index].text.trim();
+    if (term.isEmpty) return;
+
+    final results = await TranslateService.translateToVietnamese(term);
+    setState(() {
+      _suggestions[index] = results;
+    });
   }
 
   @override
@@ -99,18 +136,16 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
+            controller: _scrollController,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Nhập Tiêu đề
                 _buildInputField(
                   controller: _titleController,
                   label: 'Tiêu đề',
                   validatorText: 'Vui lòng nhập tiêu đề',
                 ),
                 const SizedBox(height: 12),
-
-                // Nút thêm mô tả
                 GestureDetector(
                   onTap: () {
                     setState(() {
@@ -118,11 +153,11 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
                     });
                   },
                   child: !_showDescription
-                      ? Text(
+                      ? const Text(
                           "+ Mô tả",
                           style: TextStyle(color: Colors.blueAccent),
                         )
-                      : SizedBox.shrink(),
+                      : const SizedBox.shrink(),
                 ),
                 if (_showDescription)
                   Padding(
@@ -134,8 +169,6 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
                     ),
                   ),
                 const SizedBox(height: 16),
-
-                // Danh sách các block từ vựng
                 ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -157,11 +190,52 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
                             validatorText: 'Vui lòng nhập từ vựng',
                           ),
                           const SizedBox(height: 8),
-                          _buildInputField(
+                          TextFormField(
                             controller: _meaningControllers[index],
-                            label: 'Định nghĩa ${index + 1}',
-                            validatorText: 'Vui lòng nhập định nghĩa',
+                            onTap: () => _fetchSuggestions(index),
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              labelText: 'ĐỊNH NGHĨA ${index + 1}',
+                              labelStyle:
+                                  const TextStyle(color: Colors.white70),
+                              filled: true,
+                              fillColor: Colors.transparent,
+                              enabledBorder: const UnderlineInputBorder(
+                                borderSide: BorderSide(color: Colors.white38),
+                              ),
+                              focusedBorder: const UnderlineInputBorder(
+                                borderSide: BorderSide(color: Colors.blueAccent),
+                              ),
+                            ),
+                            validator: (value) => value == null || value.isEmpty
+                                ? "Vui lòng nhập định nghĩa"
+                                : null,
                           ),
+                          if (_suggestions[index].isNotEmpty)
+                            ..._suggestions[index].map((s) {
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _meaningControllers[index].text = s;
+                                    _suggestions[index] = [];
+                                  });
+                                },
+                                child: Container(
+                                  margin:
+                                      const EdgeInsets.symmetric(vertical: 4),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF3A3A70),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    s,
+                                    style:
+                                        const TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                         ],
                       ),
                     );
@@ -185,9 +259,11 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
     required String label,
     String? validatorText,
     int maxLines = 1,
+    VoidCallback? onTap,
   }) {
     return TextFormField(
       controller: controller,
+      onTap: onTap,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label.toUpperCase(),

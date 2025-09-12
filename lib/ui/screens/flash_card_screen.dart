@@ -113,133 +113,153 @@ class _FlashCardScreenState extends State<FlashCardScreen> with TickerProviderSt
   }
 
   // Hiển thị Flashcard trong Swiper
-  Widget _buildFlashcardSwiper(List<FlashCard> flashcards) {
-    return Swiper(
-      itemCount: flashcards.length,
-      itemBuilder: (context, index) {
-        final card = flashcards[index];
-        
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              isFlipped = !isFlipped;  // Lật mặt khi bấm vào
-              if (isFlipped) {
-                _animationController.forward();  // Bắt đầu hiệu ứng lật
-              } else {
-                _animationController.reverse();  // Quay lại hiệu ứng ban đầu
-              }
-            });
-          },
-          child: Card(
-            color: const Color(0xFF1C1B5A),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: AnimatedBuilder(
-                animation: _flipAnimation,
-                builder: (context, child) {
-                  return Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.rotationY(_flipAnimation.value),
-                    child: isFlipped
-                        ? _buildBackSide(card)  // Mặt sau hiển thị meaning
-                        : _buildFrontSide(card),  // Mặt trước hiển thị term
-                  );
-                },
-              ),
+// Thay đổi phần _buildFlashcardSwiper:
+Widget _buildFlashcardSwiper(List<FlashCard> flashcards) {
+  // Gộp tất cả terms từ tất cả flashcards
+  final allTerms = flashcards.expand((card) => card.terms).toList();
+
+  return Swiper(
+    itemCount: allTerms.length, // Mỗi term là 1 slide
+    itemBuilder: (context, index) {
+      final term = allTerms[index];
+
+      return GestureDetector(
+        onTap: () {
+          setState(() {
+            isFlipped = !isFlipped;
+            if (isFlipped) {
+              _animationController.forward();
+            } else {
+              _animationController.reverse();
+            }
+          });
+        },
+        child: Card(
+          color: const Color(0xFF1C1B5A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: AnimatedBuilder(
+              animation: _flipAnimation,
+              builder: (context, child) {
+                return Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.rotationY(_flipAnimation.value),
+                  child: isFlipped
+                      ? _buildBackSideTerm(term)  // Mặt sau chỉ meaning
+                      : _buildFrontSideTerm(term), // Mặt trước chỉ term
+                );
+              },
             ),
           ),
-        );
-      },
-      pagination: const SwiperPagination(
-        builder: DotSwiperPaginationBuilder(color: Colors.white54),
-      ),
-      control: const SwiperControl(color: Colors.white),
-      scrollDirection: Axis.horizontal, // Trượt ngang
-    );
-  }
-
-  // Mặt trước của thẻ (hiển thị term)
-  Widget _buildFrontSide(FlashCard card) {
-    return Column(
-      key: ValueKey(1), // Đảm bảo AnimatedSwitcher hoạt động chính xác
-      children: [
-        Column(
-          children: card.terms.map<Widget>((term) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0),
-              child: Row(
-                children: [
-                  Text(
-                    "${term['term']}: ",
-                    style: const TextStyle(fontSize: 16, color: Colors.white),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
         ),
-      ],
-    );
-  }
+      );
+    },
+    pagination: const SwiperPagination(
+      builder: DotSwiperPaginationBuilder(color: Colors.white54),
+    ),
+    control: const SwiperControl(color: Colors.white),
+    scrollDirection: Axis.horizontal,
+  );
+}
 
-  // Mặt sau của thẻ (hiển thị meaning)
-  Widget _buildBackSide(FlashCard card) {
-    return Column(
-      key: ValueKey(2), // Đảm bảo AnimatedSwitcher hoạt động chính xác
-      children: [
-        Column(
-          children: card.terms.map<Widget>((term) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0),
-              child: Row(
-                children: [
-    
-                  Text(
-                    "${term['meaning']}", // Hiển thị meaning
-                    style: const TextStyle(fontSize: 16, color: Colors.white70),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
+// Mặt trước của 1 thẻ: hiển thị term
+Widget _buildFrontSideTerm(Map<String, dynamic> term) {
+  return Center(
+    key: const ValueKey(1),
+    child: Text(
+      term['term'] ?? '',
+      style: const TextStyle(fontSize: 22, color: Colors.white),
+      textAlign: TextAlign.center,
+    ),
+  );
+}
+
+// Mặt sau của 1 thẻ: hiển thị meaning
+Widget _buildBackSideTerm(Map<String, dynamic> term) {
+  return Center(
+    key: const ValueKey(2),
+    child: Text(
+      term['meaning'] ?? '',
+      style: const TextStyle(fontSize: 20, color: Colors.white70),
+      textAlign: TextAlign.center,
+    ),
+  );
+}
+
 
   // Hiển thị các terms trong ListView (phần bên dưới)
-  Widget _buildFlashcardTerms(List<FlashCard> flashcards) {
-    final card = flashcards.first;  // Lấy flashcard đầu tiên hoặc nếu có nhiều flashcards, bạn có thể thay đổi theo nhu cầu
+  // Sửa lại phần ListView
+Widget _buildFlashcardTerms(List<FlashCard> flashcards) {
+  final card = flashcards.first; // giữ nguyên logic của bạn
 
-    return ListView.builder(
-      itemCount: card.terms.length,
-      itemBuilder: (context, index) {
-        final term = card.terms[index];
+  return ListView.builder(
+    itemCount: card.terms.length,
+    itemBuilder: (context, index) {
+      final term = card.terms[index];
+      final example = term['example'] ?? '';
 
-        return Card(
-          color: const Color(0xFF1C1B5A),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // Hiển thị term và meaning
-                Expanded(
-                  child: Text(
-                    "${term['term']}: ${term['meaning']}",
-                    style: const TextStyle(fontSize: 16, color: Colors.white),
+      return Card(
+        color: const Color(0xFF1C1B5A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Term + Icon loa
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      term['term'] ?? '',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.volume_up, color: Colors.white),
+                    onPressed: () {
+                      _speak(term['term'] ?? '');
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Meaning
+              Text(
+                term['meaning'] ?? '',
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.white70,
+                ),
+              ),
+              // Example nếu có
+              if (example.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  example,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.white60,
                   ),
                 ),
               ],
-            ),
+            ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
+
+
 }
