@@ -32,7 +32,6 @@ Future<List<FlashCard>> fetchFlashCards(String title) async {
   }
 }
 
- // Thêm flashcard mới (POST)
   // Thêm flashcard mới (POST)
  Future<bool> createFlashcard({
   required String title,
@@ -50,12 +49,40 @@ Future<List<FlashCard>> fetchFlashCards(String title) async {
       "category": category,
     }),
   );
+  return response.statusCode == 200;
+}
 
-
-  if (response.statusCode == 200 || response.statusCode == 201) {
-    return true; // Thành công
+Future<bool> updateFlashcard({
+  required String oldTitle, // hoặc id nếu bạn thêm
+  required String title,
+  required String description,
+  required List<Map<String, String>> terms,
+  required String category,
+}) async {
+  final response = await http.put(
+    Uri.parse("$baseUrl/updateFlashcard/$oldTitle"), // hoặc dùng id
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode({
+      "title": title,
+      "description": description,
+      "terms": terms,
+      "category": category,
+    }),
+  );
+  return response.statusCode == 200;
+}
+//api delete
+Future<bool> deleteStudyByTitle(String title) async {
+  final response = await http.delete(
+  Uri.parse("$baseUrl/deleteStudy/${Uri.encodeComponent(title)}"),
+  headers: {"Content-Type": "application/json"},
+);
+  if (response.statusCode == 200) {
+    return true; // xoá thành công
+  } else if (response.statusCode == 404) {
+    throw Exception("Học phần không tồn tại");
   } else {
-    throw Exception("Failed to create flashcard: ${response.statusCode}");
+    throw Exception("Lỗi khi xoá học phần: ${response.statusCode}");
   }
 }
 

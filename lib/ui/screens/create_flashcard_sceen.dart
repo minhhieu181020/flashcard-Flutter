@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
 import '../../api/translate_service.dart';
+import '../../models/flash_card.dart';
 
 // Màn hình tạo Flashcard
 class CreateFlashcardScreen extends StatefulWidget {
   final String? category;
-
+  final FlashCard? flashcard; // 🔹 thêm tham số này
+  final bool isEditing;
   // ❌ KHÔNG dùng const ở đây
-  CreateFlashcardScreen({Key? key, this.category}) : super(key: key);
+  const CreateFlashcardScreen({
+    Key? key,
+    this.isEditing = false,
+    this.flashcard,
+    this.category,
+  }) : super(key: key);
+
 
   @override
   _CreateFlashcardScreenState createState() => _CreateFlashcardScreenState();
@@ -30,7 +38,22 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.flashcard != null) {
+    // Nếu có flashcard => đang chỉnh sửa
+    _titleController.text = widget.flashcard!.title;
+    _descriptionController.text = widget.flashcard!.description;
+
+    for (var term in widget.flashcard!.terms) {
+      _wordControllers.add(TextEditingController(text: term['term']));
+      _meaningControllers.add(TextEditingController(text: term['meaning']));
+      _suggestions.add([]);
+    }
+
+    _showDescription = widget.flashcard!.description.isNotEmpty;
+  } else {
+    // Nếu tạo mới => thêm 1 ô input rỗng
     _addTermField();
+  }
   }
 
   void _addTermField() {
@@ -68,7 +91,9 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
         });
       }
 
-      debugPrint("📤 Sending data: $title - $description -  $category - $terms");
+      debugPrint(
+        "📤 Sending data: $title - $description -  $category - $terms",
+      );
 
       final response = await apiService.createFlashcard(
         title: title,
@@ -90,6 +115,52 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
       ).showSnackBar(SnackBar(content: Text("Lỗi: $e")));
     }
   }
+
+void _saveFlashcard() async {
+  if (!_formKey.currentState!.validate()) return;
+
+  try {
+    final title = _titleController.text;
+    final description = _showDescription ? _descriptionController.text : "";
+    final category = widget.category ?? widget.flashcard?.category ?? "Tất cả";
+
+    List<Map<String, String>> terms = [];
+    for (int i = 0; i < _wordControllers.length; i++) {
+      terms.add({
+        "term": _wordControllers[i].text,
+        "meaning": _meaningControllers[i].text,
+      });
+    }
+
+    if (widget.flashcard == null) {
+      // 🔹 Tạo mới
+      await apiService.createFlashcard(
+        title: title,
+        description: description,
+        terms: terms,
+        category: category,
+      );
+    } else {
+      // 🔹 Cập nhật
+      await apiService.updateFlashcard(
+        oldTitle: widget.flashcard!.title, // hoặc id nếu bạn thêm vào model
+        title: title,
+        description: description,
+        terms: terms,
+        category: category,
+      );
+    }
+
+    if (mounted) Navigator.pop(context, true);
+  } catch (e) {
+    debugPrint("❌ Lỗi khi lưu flashcard: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Lỗi: $e")),
+    );
+  }
+}
+
+
 
   void _openSettings() {
     Navigator.push(
@@ -130,7 +201,7 @@ class _CreateFlashcardScreenState extends State<CreateFlashcardScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.check, color: Colors.white),
-            onPressed: _createFlashcard,
+            onPressed: _saveFlashcard,
           ),
         ],
       ),

@@ -21,7 +21,13 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    studyList = apiService.fetchStudyList();
+    _reloadStudyList();
+  }
+
+  void _reloadStudyList() {
+    setState(() {
+      studyList = apiService.fetchStudyList();
+    });
   }
 
   @override
@@ -42,11 +48,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         centerTitle: true,
         actions: [
-          // Không dùng const ở đây, vì cần thao tác động (Navigator.push)
           IconButton(
             icon: const Icon(Icons.add, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              // 👉 mở màn hình thêm flashcard và reload khi quay lại
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => CreateFlashcardScreen(
@@ -56,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               );
+              _reloadStudyList();
             },
           ),
           const SizedBox(width: 12),
@@ -130,16 +137,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 final data = snapshot.data!;
                 final filteredData = selectedCategory == "Tất cả"
                     ? data
-                    : data
-                          .where((s) => s.category == selectedCategory)
-                          .toList();
+                    : data.where((s) => s.category == selectedCategory).toList();
 
                 // ✅ Nếu không có học phần nào
                 if (filteredData.isEmpty) {
                   return Center(
                     child: TextButton.icon(
-                      onPressed: () {
-                        Navigator.push(
+                      onPressed: () async {
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => CreateFlashcardScreen(
@@ -149,6 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         );
+                        _reloadStudyList();
                       },
                       icon: const Icon(Icons.add, color: Colors.white),
                       label: const Text(
@@ -181,8 +187,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         "${study.wordCount} từ",
                         style: const TextStyle(color: Colors.white70),
                       ),
-                      onTap: () {
-                        Navigator.push(
+                      onTap: () async {
+                        // 👉 mở flashcard screen và reload khi quay lại
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => FlashCardScreen(
@@ -191,6 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         );
+                        _reloadStudyList();
                       },
                     );
                   },
