@@ -31,20 +31,20 @@ class _FlashCardScreenState extends State<FlashCardScreen>
 
   // Biến kiểm tra trạng thái lật của flashcard
   bool isFlipped = false;
-
+  double pi = 3.1416;
   @override
   void initState() {
     super.initState();
     flashCardList = apiService.fetchFlashCards(widget.studyTitle);
 
-    // Tạo AnimationController và Tween cho hiệu ứng lật 360 độ
+    // Tạo AnimationController và Tween cho hiệu ứng lật 180 độ
     _animationController = AnimationController(
       duration: const Duration(seconds: 1),
       vsync: this,
     );
 
-    // Khởi tạo _flipAnimation với giá trị ban đầu và cuối (lật 360 độ)
-    _flipAnimation = Tween<double>(begin: 0.0, end: 6.2832).animate(
+    // Khởi tạo _flipAnimation với giá trị ban đầu và cuối (lật 180 độ)
+    _flipAnimation = Tween<double>(begin: 0.0, end: pi).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
   }
@@ -175,10 +175,9 @@ class _FlashCardScreenState extends State<FlashCardScreen>
                   },
                 ),
                 ListTile(
-                  
                   leading: const Icon(Icons.delete, color: Colors.red),
                   title: const Text("Xoá"),
-                  
+
                   onTap: () async {
                     print(widget.studyTitle);
                     Navigator.pop(ctx);
@@ -186,7 +185,6 @@ class _FlashCardScreenState extends State<FlashCardScreen>
                     try {
                       bool result = await apiService.deleteStudyByTitle(
                         widget.studyTitle,
-                        
                       );
 
                       if (result) {
@@ -252,12 +250,20 @@ class _FlashCardScreenState extends State<FlashCardScreen>
               child: AnimatedBuilder(
                 animation: _flipAnimation,
                 builder: (context, child) {
+                  final isFront = _flipAnimation.value < pi / 2;
+
                   return Transform(
                     alignment: Alignment.center,
-                    transform: Matrix4.rotationY(_flipAnimation.value),
-                    child: isFlipped
-                        ? _buildBackSideTerm(term) // Mặt sau chỉ meaning
-                        : _buildFrontSideTerm(term), // Mặt trước chỉ term
+                    transform: Matrix4.identity()
+                      ..setEntry(3, 2, 0.001)
+                      ..rotateX(_flipAnimation.value),
+                    child: isFront
+                        ? _buildFrontSideTerm(term)
+                        : Transform(
+                            alignment: Alignment.center,
+                            transform: Matrix4.identity()..rotateX(pi),
+                            child: _buildBackSideTerm(term),
+                          ),
                   );
                 },
               ),
@@ -279,7 +285,7 @@ class _FlashCardScreenState extends State<FlashCardScreen>
       key: const ValueKey(1),
       child: Text(
         term['term'] ?? '',
-        style: const TextStyle(fontSize: 22, color: Colors.white),
+        style: const TextStyle(fontSize: 30, color: Colors.white),
         textAlign: TextAlign.center,
       ),
     );
@@ -291,7 +297,7 @@ class _FlashCardScreenState extends State<FlashCardScreen>
       key: const ValueKey(2),
       child: Text(
         term['meaning'] ?? '',
-        style: const TextStyle(fontSize: 20, color: Colors.white70),
+        style: const TextStyle(fontSize: 30, color: Colors.white),
         textAlign: TextAlign.center,
       ),
     );
@@ -300,7 +306,7 @@ class _FlashCardScreenState extends State<FlashCardScreen>
   // Hiển thị các terms trong ListView (phần bên dưới)
   // Sửa lại phần ListView
   Widget _buildFlashcardTerms(List<FlashCard> flashcards) {
-    final card = flashcards.first; // giữ nguyên logic của bạn
+    final card = flashcards.first;
 
     return ListView.builder(
       itemCount: card.terms.length,
